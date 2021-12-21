@@ -88,8 +88,9 @@ func Start(config *cnfg.Config) error {
 	r.HandleFunc("/ports", GetPorts).Methods("GET")
 	r.HandleFunc("/ports/{id}", GetPort).Methods("GET")
 	r.HandleFunc("/ports", UpsertPorts).Methods("POST")
-
+	log.Print(config.BindAddrServer, config.BindAddrOuter)
 	err := http.ListenAndServe(config.BindAddrOuter, r)
+
 	if err != nil {
 		return err
 	}
