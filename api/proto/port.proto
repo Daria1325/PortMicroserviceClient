@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package api;
+option go_package = "./;api";
+
+service Port {
+  rpc GetPorts(GetPortsRequest) returns (GetPortsResponse);
+  rpc UpsertPorts(UpsertPortsRequest) returns (UpsertPortsResponse);
+  rpc GetPort(GetPortRequest) returns (GetPortResponse);
+
+}
+
+
+message GetPortsRequest {
+  string Name = 1;
+}
+message GetPortsResponse {
+  string List = 1;
+}
+message UpsertPortsRequest {
+  string Name = 1;
+}
+message UpsertPortsResponse {
+  string List = 1;
+}
+message GetPortRequest {
+  string Id = 1;
+}
+message GetPortResponse {
+  string Item = 1;
+}

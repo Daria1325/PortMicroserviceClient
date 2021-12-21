@@ -1,0 +1,3 @@
+bind_addr_server = ":9080"
+bind_addr_outer = ":3000"
+json_path = "data/ports.json"
