@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	api "github.com/daria/PortMicroserviceClient/api/proto"
 	cnfg "github.com/daria/PortMicroserviceClient/data/config"
 	"github.com/gorilla/mux"
@@ -23,8 +24,9 @@ type Connection struct {
 	client api.PortClient
 }
 
-func (c *Connection) InitConn(port string) {
-	conn, err := grpc.Dial(port, grpc.WithInsecure())
+func (c *Connection) InitConn(host string, port string) {
+	s := host + port
+	conn, err := grpc.Dial(s, grpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}
@@ -32,8 +34,19 @@ func (c *Connection) InitConn(port string) {
 	c.Conn = conn
 	c.client = client
 }
+func StringToJson(s string) []map[string]interface{} {
+	var jsonMap []map[string]interface{}
+	err := json.Unmarshal([]byte(s), &jsonMap)
+	if err != nil {
+		log.Fatal(err)
+		return nil
+	}
+	return jsonMap
+}
 
-func GetPorts(w http.ResponseWriter, r *http.Request) {
+func GetPorts(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	log.Print("Looking for ports")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -41,10 +54,18 @@ func GetPorts(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(resp.GetList())
-
+	respString := resp.GetList()
+	jsonRes := StringToJson(respString)
+	if jsonRes != nil {
+		err := json.NewEncoder(w).Encode(jsonRes)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+	}
 }
 func GetPort(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
 	log.Print("Looking for port")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -52,15 +73,37 @@ func GetPort(w http.ResponseWriter, r *http.Request) {
 	resp, err := Connect.client.GetPort(ctx, &api.GetPortRequest{Id: params["id"]})
 	if err != nil {
 		w.WriteHeader(404)
+		return
 	}
-	log.Println(resp.GetItem())
+	w.WriteHeader(200)
+
+	respString := resp.GetItem()
+	jsonRes := StringToJson(respString)
+	if jsonRes != nil {
+		err := json.NewEncoder(w).Encode(jsonRes)
+		if err != nil {
+			return
+		}
+	}
 }
 
 func UpsertPorts(w http.ResponseWriter, r *http.Request) {
-	jsonData, err := ReadJson(JsonPath)
-	if err != nil {
-		log.Fatal(err)
+	w.Header().Set("Content-Type", "application/json")
+	var jsonData []byte
+	var err error
+	if r.ContentLength != 0 {
+		//jsonData, err = json.Marshal(r.Body)
+		jsonData, err = ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		jsonData, err = ReadJson(JsonPath)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
+
 	log.Print("Updating ports")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -68,7 +111,15 @@ func UpsertPorts(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(resp.GetList())
+
+	respString := resp.GetList()
+	jsonRes := StringToJson(respString)
+	if jsonRes != nil {
+		err := json.NewEncoder(w).Encode(jsonRes)
+		if err != nil {
+			return
+		}
+	}
 }
 
 func ReadJson(path string) ([]byte, error) {
@@ -88,7 +139,7 @@ func Start(config *cnfg.Config) error {
 	r.HandleFunc("/ports", GetPorts).Methods("GET")
 	r.HandleFunc("/ports/{id}", GetPort).Methods("GET")
 	r.HandleFunc("/ports", UpsertPorts).Methods("POST")
-	log.Print(config.BindAddrServer, config.BindAddrOuter)
+
 	err := http.ListenAndServe(config.BindAddrOuter, r)
 
 	if err != nil {

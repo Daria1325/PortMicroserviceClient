@@ -11,10 +11,12 @@ import (
 	"testing"
 )
 
+//START THE SERVER
+
 func TestMain(m *testing.M) {
 	config, _ := cnfg.NewConfigPath("configs/dataConfig.toml")
 	client.JsonPath = config.JsonPath
-	client.Connect.InitConn(config.BindAddrServer)
+	client.Connect.InitConn("localhost", config.BindAddrServer)
 
 	exitcode := m.Run()
 	os.Exit(exitcode)
@@ -26,7 +28,7 @@ func TestInitConn(t *testing.T) {
 			t.Error("panic")
 		}
 	}()
-	client.Connect.InitConn(":9080")
+	client.Connect.InitConn("localhost", ":9080")
 }
 
 func TestGetPorts(t *testing.T) {
@@ -39,7 +41,7 @@ func TestGetPorts(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 }
-func TestGetPort(t *testing.T) {
+func TestGetPortValid(t *testing.T) {
 	t.Parallel()
 
 	r, _ := http.NewRequest("GET", "/port/id", nil)
@@ -51,8 +53,14 @@ func TestGetPort(t *testing.T) {
 	client.GetPort(w, r)
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	vars = map[string]string{
-		"id": "0",
+}
+func TestGetPortInvalid(t *testing.T) {
+	t.Parallel()
+
+	r, _ := http.NewRequest("GET", "/port/id", nil)
+	w := httptest.NewRecorder()
+	vars := map[string]string{
+		"id": "1000",
 	}
 	r = mux.SetURLVars(r, vars)
 	client.GetPort(w, r)

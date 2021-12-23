@@ -12,7 +12,7 @@ var (
 func configService() *cnfg.Config {
 	config, _ := cnfg.NewConfigPath(configPath)
 	client.JsonPath = config.JsonPath
-	client.Connect.InitConn(config.BindAddrServer)
+	client.Connect.InitConn(config.BindAddrHost, config.BindAddrServer)
 	return config
 }
 

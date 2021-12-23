@@ -8,7 +8,7 @@ RUN go install -v ./...
 # Generate binary file from our /app
 RUN go build /go/src/github.com/daria/PortMicroserviceClient/cmd/main.go
 # Expose the ports used in server
-EXPOSE 9080:9080
+#EXPOSE 9080:9080
 EXPOSE 3000:3000
 # Run the app binarry file
 CMD ["./main"]

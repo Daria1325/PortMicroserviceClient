@@ -6,6 +6,7 @@ import (
 
 type Config struct {
 	BindAddrServer string `toml:"bind_addr_server"`
+	BindAddrHost   string `toml:"bind_addr_host"`
 	BindAddrOuter  string `toml:"bind_addr_outer"`
 	JsonPath       string `toml:"json_path"`
 }
@@ -13,6 +14,7 @@ type Config struct {
 func NewConfig() *Config {
 	return &Config{
 		BindAddrServer: ":9080",
+		BindAddrHost:   "localhost",
 		BindAddrOuter:  ":3000",
 		JsonPath:       "../data/ports.json",
 	}
