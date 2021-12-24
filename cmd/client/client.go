@@ -92,7 +92,6 @@ func UpsertPorts(w http.ResponseWriter, r *http.Request) {
 	var jsonData []byte
 	var err error
 	if r.ContentLength != 0 {
-		//jsonData, err = json.Marshal(r.Body)
 		jsonData, err = ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Fatal(err)
