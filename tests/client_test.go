@@ -15,7 +15,6 @@ import (
 
 func TestMain(m *testing.M) {
 	config, _ := cnfg.NewConfigPath("configs/dataConfig.toml")
-	client.JsonPath = config.JsonPath
 	client.Connect.InitConn("localhost", config.BindAddrServer)
 
 	exitcode := m.Run()
@@ -33,7 +32,7 @@ func TestInitConn(t *testing.T) {
 
 func TestGetPorts(t *testing.T) {
 	t.Parallel()
-
+	//передать файл
 	r, _ := http.NewRequest("GET", "/ports", nil)
 	w := httptest.NewRecorder()
 
@@ -78,14 +77,5 @@ func TestUpsertPorts(t *testing.T) {
 func TestNewConfigPath(t *testing.T) {
 	input := "some.toml"
 	_, err := cnfg.NewConfigPath(input)
-	assert.Error(t, err)
-}
-func TestReadJson(t *testing.T) {
-	input1 := "../data/ports.json"
-	_, err := client.ReadJson(input1)
-	assert.NoError(t, err)
-
-	input2 := "some.json"
-	_, err = client.ReadJson(input2)
 	assert.Error(t, err)
 }

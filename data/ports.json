@@ -2,7 +2,7 @@
   {
     "id": 0,
     "name": "consequat id officia",
-    "isActive": false,
+    "isActive": true,
     "company": "GEOFARM",
     "email": "maymclean@geofarm.com",
     "phone": "+1 (997) 434-3843",
@@ -28,7 +28,7 @@
   {
     "id": 2,
     "name": "mollit ex culpa",
-    "isActive": false,
+    "isActive": true,
     "company": "GYNKO",
     "email": "maymclean@gynko.com",
     "phone": "+1 (902) 578-2402",

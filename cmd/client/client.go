@@ -10,13 +10,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"time"
 )
 
 var (
-	JsonPath string
-	Connect  Connection
+	Connect Connection
 )
 
 type Connection struct {
@@ -24,15 +22,17 @@ type Connection struct {
 	client api.PortClient
 }
 
-func (c *Connection) InitConn(host string, port string) {
+// InitConn :TODO error handle not panic
+func (c *Connection) InitConn(host string, port string) error {
 	s := host + port
 	conn, err := grpc.Dial(s, grpc.WithInsecure())
 	if err != nil {
-		panic(err)
+		return err
 	}
 	client := api.NewPortClient(conn)
 	c.Conn = conn
 	c.client = client
+	return nil
 }
 func StringToJson(s string) []map[string]interface{} {
 	var jsonMap []map[string]interface{}
@@ -44,24 +44,34 @@ func StringToJson(s string) []map[string]interface{} {
 	return jsonMap
 }
 
+// WriterResp :TODO test the function
+func WriterResp(w http.ResponseWriter, respString string) error {
+	jsonRes := StringToJson(respString)
+	if jsonRes != nil {
+		err := json.NewEncoder(w).Encode(jsonRes)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func GetPorts(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	log.Print("Looking for ports")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	resp, err := Connect.client.GetPorts(ctx, &api.GetPortsRequest{Name: "1"})
+	resp, err := Connect.client.GetPorts(ctx, &api.GetPortsRequest{Name: ""})
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), 500)
+		return
 	}
 	respString := resp.GetList()
-	jsonRes := StringToJson(respString)
-	if jsonRes != nil {
-		err := json.NewEncoder(w).Encode(jsonRes)
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
+	err = WriterResp(w, respString)
+	if err != nil {
+		http.Error(w, err.Error(), 520)
+		return
 	}
 }
 func GetPort(w http.ResponseWriter, r *http.Request) {
@@ -73,34 +83,37 @@ func GetPort(w http.ResponseWriter, r *http.Request) {
 	resp, err := Connect.client.GetPort(ctx, &api.GetPortRequest{Id: params["id"]})
 	if err != nil {
 		w.WriteHeader(404)
+		w.Write([]byte(err.Error()))
 		return
 	}
 	w.WriteHeader(200)
 
 	respString := resp.GetItem()
-	jsonRes := StringToJson(respString)
-	if jsonRes != nil {
-		err := json.NewEncoder(w).Encode(jsonRes)
-		if err != nil {
-			return
-		}
+
+	err = WriterResp(w, respString)
+	if err != nil {
+		http.Error(w, err.Error(), 520)
+		return
 	}
 }
 
 func UpsertPorts(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	var jsonData []byte
 	var err error
 	if r.ContentLength != 0 {
-		jsonData, err = ioutil.ReadAll(r.Body)
+		file, _, err := r.FormFile("file")
 		if err != nil {
-			log.Fatal(err)
+			http.Error(w, "Could not get the data file", 400)
+			return
+		}
+		jsonData, err = ioutil.ReadAll(file)
+		if err != nil {
+			http.Error(w, "Could not read the file", 400)
+			return
 		}
 	} else {
-		jsonData, err = ReadJson(JsonPath)
-		if err != nil {
-			log.Fatal(err)
-		}
+		http.Error(w, "Data isn`t provided", 400)
+		return
 	}
 
 	log.Print("Updating ports")
@@ -108,28 +121,16 @@ func UpsertPorts(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	resp, err := Connect.client.UpsertPorts(ctx, &api.UpsertPortsRequest{Name: string(jsonData)})
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), 400)
+		return
 	}
 
 	respString := resp.GetList()
-	jsonRes := StringToJson(respString)
-	if jsonRes != nil {
-		err := json.NewEncoder(w).Encode(jsonRes)
-		if err != nil {
-			return
-		}
-	}
-}
-
-func ReadJson(path string) ([]byte, error) {
-	jsonFile, err := os.Open(path)
+	_, err = w.Write([]byte(respString))
 	if err != nil {
-		log.Print(err.Error())
-		return nil, err
+		http.Error(w, err.Error(), 520)
+		return
 	}
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-	defer jsonFile.Close()
-	return byteValue, nil
 }
 
 func Start(config *cnfg.Config) error {
@@ -140,7 +141,6 @@ func Start(config *cnfg.Config) error {
 	r.HandleFunc("/ports", UpsertPorts).Methods("POST")
 
 	err := http.ListenAndServe(config.BindAddrOuter, r)
-
 	if err != nil {
 		return err
 	}
